@@ -1,49 +1,120 @@
 require({
     baseUrl: 'js',
-    // three.js should have UMD support soon, but it currently does not
-    shim: { 'vendor/threejs/build/three': { exports: 'THREE' } }
+    paths: {
+        'three': 'vendor/threejs/build/three',
+        'OrbitControls': 'vendor/three.js-controls/src/OrbitControls',
+        'TrackballControls': 'vendor/three.js-controls/src/TrackballControls',
+        'keydrown': 'vendor/keydrown/dist/keydrown'
+    },
+    shim: {
+        'three': { exports: 'THREE' },
+        'OrbitControls': { deps: ['three'] },
+        'TrackballControls': { deps: ['three'] },
+        'keydrown': { exports: 'kd' }
+    }
 }, [
-    'vendor/threejs/build/three'
-], function(THREE) {
+    'three',
+    'Player',
+    'keydrown',
+    'TrackballControls'
+], function(THREE, Player, kd) {
 
-var camera, scene, renderer;
-var geometry, material, mesh;
-
+// var camera, scene, renderer;
+// var geometry, material, mesh;
+// var camera2, cameraHelper;
+var selectedCamera;
+var GROUND_SIZE = 100;
+var player = new Player();
+window.player = player;
 init();
-animate();
+mainLoop();
 
-function init() {
-
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-    camera.position.z = 1000;
-
-    scene = new THREE.Scene();
-
-    geometry = new THREE.CubeGeometry(200, 200, 200);
-    material = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        wireframe: true
-    });
-
-    mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-
-    renderer = new THREE.WebGLRenderer();
+function setupRenderer() {
+    renderer = new THREE.WebGLRenderer({ antialias: true});
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMapEnabled = true;
+    // renderer.shadowMapSoft = true;
+    renderer.shadowMapType = THREE.PCFSoftShadowMap;
 
+
+    renderer.shadowCameraNear = 3;
+    renderer.shadowCameraFar = 1000;
+    renderer.shadowCameraFov = 50;
+
+    renderer.shadowMapBias = 0.0039;
+    renderer.shadowMapDarkness = 0.5;
+    renderer.shadowMapWidth = 2048;
+    renderer.shadowMapHeight = 2048;
     document.body.appendChild(renderer.domElement);
-
 }
 
-function animate() {
+function setupLights(scene) {
+    light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.x = 120;
+    light.position.y = 150;
+    light.position.z = 100;
+    light.castShadow = true;
+    scene.add(light);
+    scene.add( new THREE.AmbientLight( 0x212223) );
+}
+
+function init() {
+    setupRenderer();
+    scene = new THREE.Scene();
+    scene.add(player);
+    scene.add(player.cameraHelper);
+
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+    camera.position.x = -400;
+    camera.position.y = 250;
+    camera.position.z = 500;
+    selectedCamera = camera;
+
+    controls = new THREE.TrackballControls(camera);
+    controls.noPan = true;
+    controls.damping = 0.2;
+    controls.maxDistance = 2500;
+    controls.target = player.position;
+
+    plane = new THREE.Mesh(new THREE.PlaneGeometry(1000,1000), new THREE.MeshLambertMaterial({color: 0x22FF11}));
+    plane.rotation.x = -Math.PI/2;
+    scene.add(plane);
+    plane.receiveShadow = true;
+
+    sky = new THREE.Mesh(new THREE.SphereGeometry(1000,1000, 32, 32), new THREE.MeshLambertMaterial({color: 0x3399CC}));
+    sky.material.side = THREE.DoubleSide;
+    scene.add(sky);
+
+
+    setupLights(scene);
+    kd.C.press(swapCamera);
+}
+
+function swapCamera() {
+    if (selectedCamera === camera) {
+        selectedCamera = player.camera;
+    } else {
+        selectedCamera = camera;
+    }
+}
+
+function updateScene(dt) {
+    kd.tick();
+    player.update(dt);
+    controls.update();
+}
+
+var dt = 0;
+var newTime = prevTime = new Date();
+function mainLoop() {
+    prevTime = newTime;
+    newTime = new Date();
+    dt = newTime - prevTime;
+    updateScene(dt / 1000);
 
     // note: three.js includes requestAnimationFrame shim
-    requestAnimationFrame(animate);
-
-    mesh.rotation.x += 0.01;
-    mesh.rotation.y += 0.02;
-
-    renderer.render(scene, camera);
+    requestAnimationFrame(mainLoop);
+    renderer.render(scene, selectedCamera);
 
 }
 
