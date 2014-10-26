@@ -3,8 +3,9 @@ define(['three', 'keydrown'], function (THREE, kd) {
     var Player = function () {
         THREE.Object3D.apply(this);
         this.heading = 0; // aka direction
-        this.speed = 200; // cm/sec
         this.name = 'player';
+        this.movementSpeed = 200; // cm/sec
+        this.rotationSpeed = Math.PI / 2; // rad/sec
         this.setupMesh();
     };
     Player.prototype = new THREE.Object3D();
@@ -38,19 +39,45 @@ define(['three', 'keydrown'], function (THREE, kd) {
         this.add(this.headingHelper);
     };
     Player.prototype.update = function (dt) {
+        this.applyMovement(dt);
+        this.applyRotation(dt);
+    };
+    Player.prototype.applyMovement = function(dt) {
+        var directionVector = new THREE.Vector3(0, 0, 0);
         if (kd.W.isDown()) {
-            this.position.z += this.speed * dt;
+            directionVector.z += 1;
         }
         if (kd.S.isDown()) {
-            this.position.z -= this.speed * dt;
+            directionVector.z -= 1;
         }
         if (kd.A.isDown()) {
-            this.position.x += this.speed * dt;
+            directionVector.x += 1;
         }
         if (kd.D.isDown()) {
-            this.position.x -= this.speed * dt;
+            directionVector.x -= 1;
         }
-        // this.cameraHelper.update();
+        directionVector.setLength(this.movementSpeed * dt);
+        directionVector.applyQuaternion(this.getWorldQuaternion());
+        this.position.add(directionVector);
+    };
+    Player.prototype.applyRotation = function(dt) {
+        var rotationScalar = 0;
+        if (kd.Q.isDown()) {
+            rotationScalar += 1;
+        }
+        if (kd.E.isDown()) {
+            rotationScalar -= 1;
+        }
+        this.rotateY(rotationScalar * this.rotationSpeed * dt);
+
+        var headRotation = 0;
+        if (kd.R.isDown()) {
+            headRotation -= 1;
+        }
+        if (kd.F.isDown()) {
+            headRotation += 1;
+        }
+        this.head.rotateX(headRotation * this.rotationSpeed * dt);
     };
     return Player;
 });
