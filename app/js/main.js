@@ -14,7 +14,7 @@ require({
     }
 }, [
     'three',
-    'Player',
+    'player',
     'keydrown',
     'TrackballControls'
 ], function(THREE, Player, kd) {
@@ -47,7 +47,7 @@ function setupRenderer() {
     renderer.shadowMapWidth = 2048;
     renderer.shadowMapHeight = 2048;
     maxAnisotropy = renderer.getMaxAnisotropy();
-    document.body.appendChild(renderer.domElement);
+    document.getElementById('viewport').appendChild(renderer.domElement);
 }
 
 function setupLights(scene) {

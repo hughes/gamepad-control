@@ -1,4 +1,4 @@
-define(['three', 'keydrown'], function (THREE, kd) {
+define(['three', 'keydrown', 'gamepads'], function (THREE, kd, gamepads) {
     'use strict';
     var Player = function () {
         THREE.Object3D.apply(this);
@@ -39,6 +39,7 @@ define(['three', 'keydrown'], function (THREE, kd) {
         this.add(this.headingHelper);
     };
     Player.prototype.update = function (dt) {
+        gamepads.poll();
         this.applyMovement(dt);
         this.applyRotation(dt);
     };
@@ -56,18 +57,34 @@ define(['three', 'keydrown'], function (THREE, kd) {
         if (kd.D.isDown()) {
             directionVector.x -= 1;
         }
-        directionVector.setLength(this.movementSpeed * dt);
+
+        directionVector.x -= gamepads.getAxis(0);
+        directionVector.z -= gamepads.getAxis(1);
+
+        if (directionVector.length() > 1.0) {
+            directionVector.normalize();
+        }
+
+        directionVector.multiplyScalar(this.movementSpeed * dt);
         directionVector.applyQuaternion(this.getWorldQuaternion());
+
         this.position.add(directionVector);
     };
     Player.prototype.applyRotation = function(dt) {
         var rotationScalar = 0;
-        if (kd.Q.isDown()) {
+        if (kd.Q.isDown() || gamepads.get) {
             rotationScalar += 1;
         }
         if (kd.E.isDown()) {
             rotationScalar -= 1;
         }
+        rotationScalar -= gamepads.getAxis(2);
+
+        // cap the magnitude
+        if (Math.abs(rotationScalar) > 1.0) {
+            rotationScalar /= Math.abs(rotationScalar);
+        }
+
         this.rotateY(rotationScalar * this.rotationSpeed * dt);
 
         var headRotation = 0;
@@ -77,6 +94,13 @@ define(['three', 'keydrown'], function (THREE, kd) {
         if (kd.F.isDown()) {
             headRotation += 1;
         }
+        headRotation += gamepads.getAxis(3);
+
+        // cap the magnitude
+        if (Math.abs(headRotation) > 1.0) {
+            headRotation /= Math.abs(headRotation);
+        }
+
         this.head.rotateX(headRotation * this.rotationSpeed * dt);
     };
     return Player;
